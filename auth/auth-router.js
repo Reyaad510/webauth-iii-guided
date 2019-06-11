@@ -1,7 +1,16 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const Users = require('../users/users-model.js');
+
+function generateToken(user) {
+  jwt.sign({
+    userId: user.id,
+  }, process.env.JWT_SECRET, {
+    expiresIn: '1h',
+  })
+}
 
 // for endpoints beginning with /api/auth
 router.post('/register', (req, res) => {
@@ -11,7 +20,11 @@ router.post('/register', (req, res) => {
 
   Users.add(user)
     .then(saved => {
-      res.status(201).json(saved);
+      const token = generateToken(saved)
+
+      res.status(201).json({
+        authToken: token
+      });
     })
     .catch(error => {
       res.status(500).json(error);
@@ -25,13 +38,13 @@ router.post('/login', (req, res) => {
     .first()
     .then(user => {
       if (user && bcrypt.compareSync(password, user.password)) {
-        res.status(200).json({
-          message: `Welcome ${user.username}!`,
-        });
-      } else {
-        res.status(401).json({ message: 'Invalid Credentials' });
-      }
-    })
+        const token = generateToken(user)
+            res.status(200).json({
+              message: `Welcome ${user.username}! `,
+              authToken: token,
+            });
+          }
+        })
     .catch(error => {
       res.status(500).json(error);
     });
